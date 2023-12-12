@@ -5,6 +5,8 @@ parameters:
   RepoId: $(Build.Repository.Name)
   WorkingDirectory: ''
   ScriptDirectory: eng/common/scripts
+  # Set to true for language repos that have packages in child directories of other packages
+  NoRecurse: false
 
 steps:
 - task: PowerShell@2
@@ -17,6 +19,7 @@ steps:
       -releaseSha ${{ parameters.ReleaseSha }}
       -repoId ${{ parameters.RepoId }}
       -workingDirectory '${{ parameters.WorkingDirectory }}'
+      -NoRecurse
     pwsh: true
   timeoutInMinutes: 5
   env:

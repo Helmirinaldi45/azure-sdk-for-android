@@ -101,11 +101,16 @@ function RetrieveReleaseTag($artifactLocation, $continueOnError = $true) {
   }
 }
 
-function RetrievePackages($artifactLocation) {
-  $pkgs = Get-ChildItem -Path $artifactLocation -Include $packagePattern -Recurse -File
+function RetrievePackages($artifactLocation, [switch]$NoRecurse) {
+  $pkgs = @()
+  if ($NoRecurse) {
+    $pkgs = Get-ChildItem -Path $artifactLocation -Include $packagePattern -Recurse -File -Depth 0
+  } else {
+    $pkgs = Get-ChildItem -Path $artifactLocation -Include $packagePattern -Recurse -File
+  }
   if ($GetPackageInfoFromPackageFileFn -and (Test-Path "Function:$GetPackageInfoFromPackageFileFn"))
   {
-    return $pkgs, $GetPackageInfoFromPackageFileFn
+    return @($pkgs), $GetPackageInfoFromPackageFileFn
   }
   else
   {
@@ -116,9 +121,9 @@ function RetrievePackages($artifactLocation) {
 }
 
 # Walk across all build artifacts, check them against the appropriate repository, return a list of tags/releases
-function VerifyPackages($artifactLocation, $workingDirectory, $apiUrl, $releaseSha,  $continueOnError = $false) {
+function VerifyPackages([string]$artifactLocation, $workingDirectory, $apiUrl, $releaseSha, $continueOnError = $false, [switch]$NoRecurse) {
   $pkgList = [array]@()
-  $pkgs, $parsePkgInfoFn = RetrievePackages -artifactLocation $artifactLocation
+  $pkgs, $parsePkgInfoFn = RetrievePackages -artifactLocation $artifactLocation -NoRecurse:$NoRecurse
 
   foreach ($pkg in $pkgs) {
     try {
@@ -156,8 +161,8 @@ function VerifyPackages($artifactLocation, $workingDirectory, $apiUrl, $releaseS
 
   $results = @([array]$pkgList | Sort-Object -Property Tag -uniq)
 
-  $existingTags = GetExistingTags($apiUrl)
-  
+  $existingTags = GetExistingTags $apiUrl
+
   $intersect = $results | % { $_.Tag } | ? { $existingTags -contains $_ }
 
   if ($intersect.Length -gt 0 -and !$continueOnError) {
